@@ -1,7 +1,6 @@
 name: Pipeline Dashboard CI
 
-# Run the workflow when code is pushed to main
-# or when a pull request targets main.
+# Run CI for pushes to main and pull requests targeting main
 on:
   push:
     branches:
@@ -13,7 +12,7 @@ on:
 
 jobs:
   # --------------------------------------------------
-  # Backend validation
+  # Backend CI
   # --------------------------------------------------
   backend-check:
     name: Backend Check
@@ -37,8 +36,9 @@ jobs:
         run: |
           python -m compileall backend
 
+
   # --------------------------------------------------
-  # Frontend validation
+  # Frontend CI
   # --------------------------------------------------
   frontend-check:
     name: Frontend Check
@@ -57,11 +57,14 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: |
+          npm ci
 
       - name: Build React application
         working-directory: frontend
-        run: npm run build
+        run: |
+          npm run build
+
 
   # --------------------------------------------------
   # Deploy to Mac using self-hosted runner
@@ -74,8 +77,7 @@ jobs:
       - backend-check
       - frontend-check
 
-    # Deploy only after a push to the main branch.
-    # Do not deploy for pull requests.
+    # Deploy only after a successful push to main
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -95,10 +97,46 @@ jobs:
         run: |
           docker compose ps
 
+      # --------------------------------------------------
+      # Backend health check with retry logic
+      # --------------------------------------------------
       - name: Check backend health
         run: |
-          curl --fail http://localhost:8000/health
+          echo "Waiting for backend to become ready..."
 
+          for i in {1..12}; do
+            echo "Health-check attempt $i/12"
+
+            if curl --fail --silent --show-error \
+              http://127.0.0.1:8000/health; then
+
+              echo ""
+              echo "Backend is healthy!"
+              exit 0
+            fi
+
+            echo "Backend is not ready yet."
+            sleep 5
+          done
+
+          echo "Backend health check failed."
+          echo "Displaying backend logs..."
+
+          docker compose logs backend
+
+          exit 1
+
+      # --------------------------------------------------
+      # Frontend availability check
+      # --------------------------------------------------
       - name: Check frontend availability
         run: |
-          curl --fail http://localhost:3001
+          curl --fail --silent --show-error \
+            http://127.0.0.1:3001
+
+          echo ""
+          echo "Frontend is available!"
+
+      - name: Display final service status
+        run: |
+          docker compose ps
