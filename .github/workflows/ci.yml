@@ -1,16 +1,20 @@
 name: Pipeline Dashboard CI
 
-# Run this workflow whenever code is pushed to main
-# or when a Pull Request targets main.
+# Run the workflow when code is pushed to main
+# or when a pull request targets main.
 on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
 
 jobs:
+  # --------------------------------------------------
+  # Backend validation
+  # --------------------------------------------------
   backend-check:
     name: Backend Check
     runs-on: ubuntu-latest
@@ -33,6 +37,9 @@ jobs:
         run: |
           python -m compileall backend
 
+  # --------------------------------------------------
+  # Frontend validation
+  # --------------------------------------------------
   frontend-check:
     name: Frontend Check
     runs-on: ubuntu-latest
@@ -55,3 +62,43 @@ jobs:
       - name: Build React application
         working-directory: frontend
         run: npm run build
+
+  # --------------------------------------------------
+  # Deploy to Mac using self-hosted runner
+  # --------------------------------------------------
+  deploy-to-mac:
+    name: Deploy to Mac
+    runs-on: self-hosted
+
+    needs:
+      - backend-check
+      - frontend-check
+
+    # Deploy only after a push to the main branch.
+    # Do not deploy for pull requests.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Verify Docker installation
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Rebuild and restart Docker services
+        run: |
+          docker compose up --build -d
+
+      - name: Check running containers
+        run: |
+          docker compose ps
+
+      - name: Check backend health
+        run: |
+          curl --fail http://localhost:8000/health
+
+      - name: Check frontend availability
+        run: |
+          curl --fail http://localhost:3000
