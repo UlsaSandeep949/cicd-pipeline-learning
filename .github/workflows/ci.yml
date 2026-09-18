@@ -101,4 +101,4 @@ jobs:
 
       - name: Check frontend availability
         run: |
-          curl --fail http://localhost:3000
+          curl --fail http://localhost:3001
