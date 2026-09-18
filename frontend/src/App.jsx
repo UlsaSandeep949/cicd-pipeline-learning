@@ -35,7 +35,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Pipeline Dashboard</h1>
+      <h1>Pipeline Dashboard - CI/CD Learning</h1>
 
       <p>Welcome to the Pipeline Platform</p>
 
