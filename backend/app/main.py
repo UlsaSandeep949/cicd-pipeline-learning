@@ -57,11 +57,6 @@ def get_pipelines():
                 "id": 4,
                 "name": "MMMM Pipeline",
                 "status": "Failed"
-            },
-            {
-                "id": 5,
-                "name": "M Pipeline",
-                "status": "Failed"
-            },
+            }
         ]
     }
